@@ -1,0 +1,40 @@
+name: Publish to RubyGems
+
+# Trusted publishing: RubyGems verifies a short-lived OIDC token from this workflow, so no
+# API key is stored and the account's MFA requirement is satisfied without a manual code.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: rubygems
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      # Loading the gem from the built artifact, not the source tree, is what catches a
+      # gemspec whose files list omits something the library requires at runtime.
+      - name: Verify the built gem loads and verifies signatures
+        run: |
+          gem build vive.gemspec
+          gem install --local ./vive-*.gem
+          ruby -e '
+            require "vive"
+            secret = "whsec_test"
+            body = %({"event":"message.sent"})
+            sig = "sha256=" + OpenSSL::HMAC.hexdigest("SHA256", secret, body)
+            raise "signature check failed" unless Vive.verify_webhook_signature(body, sig, secret)
+            raise "forgery accepted" if Vive.verify_webhook_signature(body, sig, "whsec_other")
+            puts "ok"
+          '
+
+      - uses: rubygems/release-gem@v1
