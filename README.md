@@ -19,4 +19,4 @@ message = vive.send_text(to: "15551234567", text: "Your order shipped.")
 - Automatic retry of `429` and `5xx` with backoff; never retries `4xx`
 - Constant-time webhook signature verification
 
-Full documentation: [docs](../../docs).
+Full documentation: <https://app.getvive.ai/docs/>.
